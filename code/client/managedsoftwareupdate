@@ -424,10 +424,7 @@ def notifyUserOfUpdates(force=False):
             interval = interval - (6 * 60 * 60)
         nextNotifyDate = lastNotifiedDate.dateByAddingTimeInterval_(interval)
     if force or now.timeIntervalSinceDate_(nextNotifyDate) >= 0:
-        # record current notification date
-        munkicommon.set_pref('LastNotifiedDate', now)
-
-        munkicommon.log('Notifying user of available updates.')
+        munkicommon.log('Attempting to notify user of available updates.')
         munkicommon.log('LastNotifiedDate was %s' % lastNotifiedString)
 
         # notify user of available updates using LaunchAgent to start
@@ -438,7 +435,17 @@ def notifyUserOfUpdates(force=False):
         time.sleep(5)
         if os.path.exists(launchfile):
             os.unlink(launchfile)
-        user_was_notified = True
+        # check if MSC.app is running
+        msc_path = munkicommon.getExecutablePathFromBundleID(
+            'com.googlecode.munki.ManagedSoftwareCenter')
+        if msc_path and munkicommon.isAppRunning(msc_path):
+            user_was_notified = True
+            # record current notification date/time
+            munkicommon.set_pref('LastNotifiedDate', now)
+        else:
+            munkicommon.log(
+                'Cannot confirm Managed Software Center.app is running.')
+
     return user_was_notified
 
 

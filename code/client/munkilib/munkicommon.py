@@ -2479,6 +2479,26 @@ def getConditions():
     return CONDITIONS
 
 
+def getExecutablePathFromBundleID(bundle_id):
+    '''Uses LaunchServices to attempt to find a path for an application with
+    the given bundle_id. Returns a relative path of the format
+    Foo.app/Contents/MacOS/foo or an absolute path in the format
+    /Applications/Foo.app for use with isAppRunning()'''
+    pathname = None
+    executable = None
+    (dummy_resultcode, dummy_fileref,
+     nsurl) = LaunchServices.LSFindApplicationForInfo(
+        0, bundle_id, None, None, None)
+    if nsurl and nsurl.isFileURL():
+        pathname = nsurl.path()
+        dirname = os.path.dirname(pathname)
+        executable = getAppBundleExecutable(pathname)
+        if executable:
+            # path to executable should be location agnostic
+            executable = executable[len(dirname + '/'):]
+    return executable or pathname
+
+
 def isAppRunning(appname):
     """Tries to determine if the application in appname is currently
     running"""

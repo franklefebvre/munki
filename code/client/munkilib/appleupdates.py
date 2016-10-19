@@ -400,16 +400,9 @@ class AppleUpdates(object):
         #
         # use set() to eliminate any duplicate application ids
         for app_id in set(must_close_app_ids):
-            dummy_resultcode, dummy_fileref, nsurl = LSFindApplicationForInfo(
-                0, app_id, None, None, None)
-            if nsurl and nsurl.isFileURL():
-                pathname = nsurl.path()
-                dirname = os.path.dirname(pathname)
-                executable = munkicommon.getAppBundleExecutable(pathname)
-                if executable:
-                    # path to executable should be location agnostic
-                    executable = executable[len(dirname + '/'):]
-                blocking_apps.append(executable or pathname)
+            blocking_app = munkicommon.getExecutablePathFromBundleID(app_id)
+            if blocking_app:
+                blocking_apps.append(blocking_app)
 
         # get firmware alert text if any
         firmware_alert_text = self.GetFirmwareAlertText(dom)
