@@ -31,6 +31,70 @@ import os
 import subprocess
 import time
 
+from munkilib import updatecheck
+
+from Quartz import CGGetActiveDisplayList, CGGetOnlineDisplayList
+from CoreFoundation import CFPreferencesCopyAppValue
+
+
+def displayMirroringActive():
+    '''Returns True if any two displays are mirroring, False otherwise'''
+    # maximum number of displays to return
+    max_displays = 100
+    # get active display list
+    # CGGetActiveDisplayList:
+    #     Provides a list of displays that are active (or drawable).
+    (err, active_displays, number_of_active_displays) = CGGetActiveDisplayList(
+         max_displays, None, None)
+    if err:
+        return False
+    
+    # get online display list
+    # CGGetOnlineDisplayList:
+    #     Provides a list of displays that are online 
+    #     (active, mirrored, or sleeping).
+    (err, online_displays, number_of_online_displays) = CGGetOnlineDisplayList(
+         max_displays, None, None)
+    if err:
+        return False
+    # if one or more displays are mirrored, the number of active displays
+    # will be fewer than the number of online displays
+    return number_of_active_displays < number_of_online_displays
+
+
+def dndIsActive():
+    '''Returns True if Notification Center's Do Not Disturb is active.'''
+
+    PREFSDOMAIN = 'com.apple.notificationcenterui'
+    # first just check if the doNotDisturb preference is set (fails on 10.9)
+    doNotDisturb = (CFPreferencesCopyAppValue('doNotDisturb', PREFSDOMAIN) or
+                    False)
+    if doNotDisturb:
+        return True
+
+    # check to see if dndStart and dndStart are defined, and if so, if
+    # we are inside the times
+    try:
+        dndStart = int(CFPreferencesCopyAppValue('dndStart', PREFSDOMAIN))
+        dndEnd = int(CFPreferencesCopyAppValue('dndEnd', PREFSDOMAIN))
+    except TypeError:
+        dndStart = None
+        dndEnd = None
+    if dndStart and dndEnd:
+        current_time = time.localtime()
+        minutes_since_midnight = current_time.tm_hour * 60 + current_time.tm_min
+        if dndStart < dndEnd:
+            if dndStart <= minutes_since_midnight < dndEnd:
+                return True
+        else:
+            if ((minutes_since_midnight < dndEnd) or
+                (minutes_since_midnight >= dndStart)):
+                return True
+
+    # if dndMirroring is not explicitly False, if we are mirroring, return True
+    if CFPreferencesCopyAppValue('dndMirroring', PREFSDOMAIN) is not False:
+        return displayMirroringActive()
+
 
 def getconsoleuser():
     '''Uses Apple's SystemConfiguration framework to get the current
@@ -53,6 +117,16 @@ def main():
 
     if (consoleuser == thisuser) or \
         (consoleuser == None and thisuser == "root"):
+        if consoleuser != "root":
+            dndActive = dndIsActive()
+            updatesToBeForcedSoon = (
+                updatecheck.checkForceInstallPackages() is not None)
+            if dndActive and not updatesToBeForcedSoon:
+                print ("Not launching the app because Do Not Disturb is active "
+                       "and there are no updates to be forced soon.")
+                time.sleep(10)
+                exit(0)
+
         cmd = ["/usr/bin/open"]
         if len(sys.argv) > 1:
             cmd.extend(sys.argv[1:])

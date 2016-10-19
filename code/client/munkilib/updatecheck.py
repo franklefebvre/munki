@@ -3496,7 +3496,11 @@ def checkForceInstallPackages():
                         result = 'soon'
 
         if writeback:
-            FoundationPlist.writePlist(installinfo, installinfopath)
+            try:
+                FoundationPlist.writePlist(installinfo, installinfopath)
+            except FoundationPlist.NSPropertyListWriteException:
+                # don't crash if we can't write these changes!
+                pass
 
     return result
 
