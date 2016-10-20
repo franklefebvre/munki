@@ -24,6 +24,11 @@ GUI user's session.
 Prevents multiple copies of the app from being launched
 when Fast User Switching is in use
 Intended for use by a launchd LaunchAgent.
+
+Originally written as a generic launching mechanism, it now is tailored to the
+specific use-case of launching Managed Software Center.app in the current
+GUI user's session, but skipping the launch if the user has enabled Notification
+Manager's Do Not Disturb mode or is display mirroring.
 """
 
 import sys
